@@ -576,7 +576,7 @@ namespace GoonPad.Soundboard
             var b1 = -2 * ((A + 1) + (A - 1) * cosw0);
             var b2 = (A + 1) + (A - 1) * cosw0 - 2 * alpha * A;
 
-            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1);
+            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1f);
         }
 
         private static BiQuadFilter CreateHighShelfFilter(WaveFormat format, float frequency, float gainDb)
@@ -595,7 +595,7 @@ namespace GoonPad.Soundboard
             var b1 = 2 * ((A + 1) - (A - 1) * cosw0);
             var b2 = (A + 1) - (A - 1) * cosw0 - 2 * alpha * A;
 
-            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1);
+            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1f);
         }
     }
 
