@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Win32;
 using NAudio.Wave;
 using NAudio.Dsp;
@@ -167,9 +168,12 @@ namespace GoonPad.Soundboard
             {
                 var audioFile = new AudioFileReader(pad.FilePath);
                 
-                // Apply EQ filters
-                var bassFilter = new BiQuadFilter(audioFile.WaveFormat, BiQuadFilterType.LowShelf, 200, _bassGain, 1);
-                var trebleFilter = new BiQuadFilter(audioFile.WaveFormat, BiQuadFilterType.HighShelf, 3000, _trebleGain, 1);
+                // Apply EQ filters using ISampleProvider chain
+                var eqProvider = audioFile.ToSampleProvider();
+                if (_bassGain != 0f)
+                    eqProvider = eqProvider.ApplyBassBoost(_bassGain, 200);
+                if (_trebleGain != 0f)
+                    eqProvider = eqProvider.ApplyTrebleBoost(_trebleGain, 3000);
                 
                 var player = new WaveOutEvent();
                 
@@ -178,7 +182,7 @@ namespace GoonPad.Soundboard
                     player.DeviceNumber = deviceNum;
                 }
 
-                player.Init(audioFile);
+                player.Init(eqProvider);
                 player.PlaybackStopped += (s, e) =>
                 {
                     audioFile.Dispose();
@@ -439,10 +443,10 @@ namespace GoonPad.Soundboard
             Height = 150;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Owner = Application.Current.MainWindow;
-            Background = (Brush)FindResource("PrimaryDarkBrush");
+            Background = Brushes.Transparent;
 
             var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             _textBox = new TextBox
@@ -450,8 +454,8 @@ namespace GoonPad.Soundboard
                 Text = currentName,
                 Margin = new Thickness(10),
                 FontSize = 14,
-                Background = (Brush)FindResource("SecondaryDarkBrush"),
-                Foreground = (Brush)FindResource("TextBrush")
+                Background = Brushes.White,
+                Foreground = Brushes.Black
             };
             Grid.SetRow(_textBox, 0);
 
@@ -466,8 +470,7 @@ namespace GoonPad.Soundboard
             {
                 Content = "OK",
                 Width = 60,
-                Margin = new Thickness(5),
-                Style = (Style)FindResource("ModernButton")
+                Margin = new Thickness(5)
             };
             _okButton.Click += (s, e) => { NewName = _textBox.Text; DialogResult = true; Close(); };
 
@@ -475,8 +478,7 @@ namespace GoonPad.Soundboard
             {
                 Content = "Cancel",
                 Width = 60,
-                Margin = new Thickness(5),
-                Style = (Style)FindResource("ModernButton")
+                Margin = new Thickness(5)
             };
             _cancelButton.Click += (s, e) => DialogResult = false;
 
@@ -503,17 +505,17 @@ namespace GoonPad.Soundboard
             Height = 150;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Owner = Application.Current.MainWindow;
-            Background = (Brush)FindResource("PrimaryDarkBrush");
+            Background = Brushes.Transparent;
 
             var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             _instruction = new TextBlock
             {
                 Text = "Press any key...",
                 FontSize = 18,
-                Foreground = (Brush)FindResource("TextBrush"),
+                Foreground = Brushes.Black,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -524,8 +526,7 @@ namespace GoonPad.Soundboard
                 Content = "Cancel",
                 Width = 80,
                 Margin = new Thickness(10),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Style = (Style)FindResource("ModernButton")
+                HorizontalAlignment = HorizontalAlignment.Center
             };
             cancelButton.Click += (s, e) => DialogResult = false;
             Grid.SetRow(cancelButton, 1);
@@ -543,6 +544,87 @@ namespace GoonPad.Soundboard
             _instruction.Text = $"Bound to: {BoundKey}";
             DialogResult = true;
             e.Handled = true;
+        }
+    }
+
+    // Extension methods for EQ
+    public static class AudioExtensions
+    {
+        public static ISampleProvider ApplyBassBoost(this ISampleProvider source, float gainDb, float frequency = 200f)
+        {
+            return new BiQuadFilterSource(source, CreateLowShelfFilter(source.WaveFormat, frequency, gainDb));
+        }
+
+        public static ISampleProvider ApplyTrebleBoost(this ISampleProvider source, float gainDb, float frequency = 3000f)
+        {
+            return new BiQuadFilterSource(source, CreateHighShelfFilter(source.WaveFormat, frequency, gainDb));
+        }
+
+        private static BiQuadFilter CreateLowShelfFilter(WaveFormat format, float frequency, float gainDb)
+        {
+            var sampleRate = format.SampleRate;
+            var Q = 0.707f;
+            var A = (float)Math.Pow(10, gainDb / 40);
+            var w0 = 2 * Math.PI * frequency / sampleRate;
+            var cosw0 = Math.Cos(w0);
+            var sinw0 = Math.Sin(w0);
+            var alpha = sinw0 / (2 * Q);
+
+            var a0 = (A + 1) - (A - 1) * cosw0 + 2 * alpha * A;
+            var a1 = 2 * ((A - 1) - (A + 1) * cosw0);
+            var a2 = (A + 1) - (A - 1) * cosw0 - 2 * alpha * A;
+            var b1 = -2 * ((A + 1) + (A - 1) * cosw0);
+            var b2 = (A + 1) + (A - 1) * cosw0 - 2 * alpha * A;
+
+            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1);
+        }
+
+        private static BiQuadFilter CreateHighShelfFilter(WaveFormat format, float frequency, float gainDb)
+        {
+            var sampleRate = format.SampleRate;
+            var Q = 0.707f;
+            var A = (float)Math.Pow(10, gainDb / 40);
+            var w0 = 2 * Math.PI * frequency / sampleRate;
+            var cosw0 = Math.Cos(w0);
+            var sinw0 = Math.Sin(w0);
+            var alpha = sinw0 / (2 * Q);
+
+            var a0 = (A + 1) + (A - 1) * cosw0 + 2 * alpha * A;
+            var a1 = -2 * ((A - 1) + (A + 1) * cosw0);
+            var a2 = (A + 1) + (A - 1) * cosw0 - 2 * alpha * A;
+            var b1 = 2 * ((A + 1) - (A - 1) * cosw0);
+            var b2 = (A + 1) - (A - 1) * cosw0 - 2 * alpha * A;
+
+            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1);
+        }
+    }
+
+    public class BiQuadFilterSource : ISampleProvider
+    {
+        private readonly ISampleProvider _source;
+        private readonly BiQuadFilter _filter;
+        private readonly float[] _workBuffer;
+
+        public BiQuadFilterSource(ISampleProvider source, BiQuadFilter filter)
+        {
+            _source = source;
+            _filter = filter;
+            _workBuffer = new float[source.WaveFormat.Channels];
+        }
+
+        public WaveFormat WaveFormat => _source.WaveFormat;
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            int samplesRead = _source.Read(buffer, offset, count);
+            for (int i = 0; i < samplesRead; i += WaveFormat.Channels)
+            {
+                for (int ch = 0; ch < WaveFormat.Channels; ch++)
+                {
+                    buffer[offset + i + ch] = _filter.Transform(buffer[offset + i + ch]);
+                }
+            }
+            return samplesRead;
         }
     }
 }
