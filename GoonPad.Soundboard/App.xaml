@@ -1,0 +1,122 @@
+<Application x:Class="GoonPad.Soundboard.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Modern Dark Theme Colors -->
+            <Color x:Key="PrimaryDark">#1a1a2e</Color>
+            <Color x:Key="SecondaryDark">#16213e</Color>
+            <Color x:Key="AccentColor">#0f3460</Color>
+            <Color x:Key="HighlightColor">#e94560</Color>
+            <Color x:Key="TextColor">#ffffff</Color>
+            <Color x:Key="TextSecondaryColor">#b0b0b0</Color>
+            <Color x:Key="PadBackground">#2d2d44</Color>
+            <Color x:Key="PadHoverBackground">#3d3d5c</Color>
+            <Color x:Key="PadActiveBackground">#e94560</Color>
+            
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDark}"/>
+            <SolidColorBrush x:Key="SecondaryDarkBrush" Color="{StaticResource SecondaryDark}"/>
+            <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+            <SolidColorBrush x:Key="HighlightBrush" Color="{StaticResource HighlightColor}"/>
+            <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
+            <SolidColorBrush x:Key="PadBackgroundBrush" Color="{StaticResource PadBackground}"/>
+            <SolidColorBrush x:Key="PadHoverBackgroundBrush" Color="{StaticResource PadHoverBackground}"/>
+            <SolidColorBrush x:Key="PadActiveBackgroundBrush" Color="{StaticResource PadActiveBackground}"/>
+
+            <!-- Modern Button Style -->
+            <Style x:Key="ModernButton" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="15,8"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="8" 
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource HighlightBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Sound Pad Style -->
+            <Style x:Key="SoundPadButton" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource PadBackgroundBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Margin" Value="5"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="MinHeight" Value="80"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}" 
+                                    CornerRadius="10"
+                                    BorderBrush="{StaticResource AccentBrush}"
+                                    BorderThickness="2">
+                                <Grid>
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="{TemplateBinding Content}" 
+                                                   FontWeight="Bold" 
+                                                   FontSize="14"
+                                                   HorizontalAlignment="Center"
+                                                   TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="keyHint" 
+                                                   Text="" 
+                                                   FontSize="10" 
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="{StaticResource PadHoverBackgroundBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="{StaticResource PadActiveBackgroundBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ComboBox Style -->
+            <Style x:Key="ModernComboBox" TargetType="ComboBox">
+                <Setter Property="Background" Value="{StaticResource SecondaryDarkBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="FontSize" Value="13"/>
+            </Style>
+
+            <!-- Slider Style -->
+            <Style x:Key="ModernSlider" TargetType="Slider">
+                <Setter Property="Minimum" Value="-12"/>
+                <Setter Property="Maximum" Value="12"/>
+                <Setter Property="TickFrequency" Value="1"/>
+                <Setter Property="IsSnapToTickEnabled" Value="True"/>
+                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

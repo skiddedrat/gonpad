@@ -1,0 +1,152 @@
+<Window x:Class="GoonPad.Soundboard.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GoonPad Soundboard" 
+        Height="700" 
+        Width="1200"
+        MinHeight="500"
+        MinWidth="800"
+        Background="{StaticResource PrimaryDarkBrush}"
+        WindowStartupLocation="CenterScreen">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top Control Panel -->
+        <Border Grid.Row="0" Background="{StaticResource SecondaryDarkBrush}" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Output Device Selector -->
+                    <StackPanel Margin="0,0,15,0">
+                        <TextBlock Text="Output Device" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="OutputDeviceCombo" Style="{StaticResource ModernComboBox}" Width="200" MaxHeight="300"/>
+                    </StackPanel>
+
+                    <!-- Mic Device Selector -->
+                    <StackPanel Margin="0,0,15,0">
+                        <TextBlock Text="Microphone" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="MicDeviceCombo" Style="{StaticResource ModernComboBox}" Width="200" MaxHeight="300"/>
+                    </StackPanel>
+
+                    <!-- Concurrent Playback Limit -->
+                    <StackPanel Margin="0,0,15,0">
+                        <TextBlock Text="Max Concurrent Sounds" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="ConcurrentLimitCombo" Style="{StaticResource ModernComboBox}" Width="80" SelectedIndex="4">
+                            <ComboBoxItem Content="1"/>
+                            <ComboBoxItem Content="5"/>
+                            <ComboBoxItem Content="10"/>
+                            <ComboBoxItem Content="20"/>
+                            <ComboBoxItem Content="50"/>
+                            <ComboBoxItem Content="100"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Multi-Play Mode Toggle -->
+                    <StackPanel Margin="0,0,15,0">
+                        <TextBlock Text="Playback Mode" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="MultiPlayModeCombo" Style="{StaticResource ModernComboBox}" Width="120" SelectedIndex="1">
+                            <ComboBoxItem Content="Single"/>
+                            <ComboBoxItem Content="Layered"/>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Import Sounds Button -->
+                    <Button x:Name="ImportButton" Content="📁 Import Sounds" Style="{StaticResource ModernButton}" Margin="0,0,10,0" Click="ImportButton_Click"/>
+                    
+                    <!-- Save Profile Button -->
+                    <Button x:Name="SaveProfileButton" Content="💾 Save Profile" Style="{StaticResource ModernButton}" Margin="0,0,10,0" Click="SaveProfileButton_Click"/>
+                    
+                    <!-- Load Profile Button -->
+                    <Button x:Name="LoadProfileButton" Content="📂 Load Profile" Style="{StaticResource ModernButton}" Margin="0,0,10,0" Click="LoadProfileButton_Click"/>
+                    
+                    <!-- Stop All Button -->
+                    <Button x:Name="StopAllButton" Content="⏹ Stop All" Style="{StaticResource ModernButton}" Background="{StaticResource HighlightBrush}" Click="StopAllButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Sound Pads Grid -->
+        <Border Grid.Row="1" Padding="15">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="PadsGrid" Background="Transparent">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource SoundPadButton}" 
+                                    Command="{Binding PlayCommand}"
+                                    Content="{Binding Name}"
+                                    Tag="{Binding}"
+                                    Width="140"
+                                    Height="100"
+                                    MouseRightButtonDown="Pad_RightClick"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Bottom EQ Controls -->
+        <Border Grid.Row="2" Background="{StaticResource SecondaryDarkBrush}" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Bass Control -->
+                <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                    <TextBlock Text="Bass" Foreground="{StaticResource TextBrush}" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="-12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                        <Slider x:Name="BassSlider" Grid.Column="1" Style="{StaticResource ModernSlider}" ValueChanged="BassSlider_ValueChanged" Margin="10,0"/>
+                        <TextBlock Grid.Column="2" Text="+12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock x:Name="BassValueText" Text="0.0 dB" Foreground="{StaticResource HighlightBrush}" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- Volume Display -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0">
+                    <TextBlock Text="Active Voices" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="ActiveVoicesText" Text="0 / 50" Foreground="{StaticResource TextBrush}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Treble Control -->
+                <StackPanel Grid.Column="2" Margin="15,0,0,0">
+                    <TextBlock Text="Treble" Foreground="{StaticResource TextBrush}" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="-12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                        <Slider x:Name="TrebleSlider" Grid.Column="1" Style="{StaticResource ModernSlider}" ValueChanged="TrebleSlider_ValueChanged" Margin="10,0"/>
+                        <TextBlock Grid.Column="2" Text="+12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock x:Name="TrebleValueText" Text="0.0 dB" Foreground="{StaticResource HighlightBrush}" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
