@@ -599,6 +599,31 @@ namespace GoonPad.Soundboard
         }
     }
 
+    public class BiQuadFilter
+    {
+        private float a1, a2, b0, b1, b2;
+        private float z1, z2;
+
+        public BiQuadFilter(float a1, float a2, float b1, float b2, float b0)
+        {
+            this.a1 = a1;
+            this.a2 = a2;
+            this.b0 = b0;
+            this.b1 = b1;
+            this.b2 = b2;
+            z1 = 0;
+            z2 = 0;
+        }
+
+        public float Transform(float input)
+        {
+            float output = b0 * input + z1;
+            z1 = b1 * input - a1 * output + z2;
+            z2 = b2 * input - a2 * output;
+            return output;
+        }
+    }
+
     public class BiQuadFilterSource : ISampleProvider
     {
         private readonly ISampleProvider _source;
