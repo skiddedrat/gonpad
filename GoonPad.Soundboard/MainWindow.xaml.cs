@@ -3,13 +3,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
 using NAudio.Wave;
-using NAudio.Dsp;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json;
 
 namespace GoonPad.Soundboard
@@ -17,18 +16,15 @@ namespace GoonPad.Soundboard
     public partial class MainWindow : Window
     {
         private ObservableCollection<SoundPad> _soundPads = new();
-        private WaveOutEvent? _outputDevice;
-        private List<WaveOutEvent> _activePlayers = new();
+        private List<IWavePlayer> _activePlayers = new();
         private int _maxConcurrent = 50;
         private bool _layeredMode = true;
-        private float _bassGain = 0f;
-        private float _trebleGain = 0f;
 
         public MainWindow()
         {
             InitializeComponent();
             InitializeDevices();
-            PadsGrid.ItemsSource = _soundPads;
+            PadsList.ItemsSource = _soundPads;
             UpdateActiveVoicesDisplay();
             
             // Keyboard shortcut handling
@@ -55,14 +51,18 @@ namespace GoonPad.Soundboard
             if (MicDeviceCombo.Items.Count > 0)
                 MicDeviceCombo.SelectedIndex = 0;
 
-            OutputDeviceCombo.SelectionChanged += (s, e) => ReinitializeOutput();
-        }
+            // Handle concurrent limit combo
+            ConcurrentLimitCombo.SelectionChanged += (s, e) =>
+            {
+                if (ConcurrentLimitCombo.SelectedItem is ComboBoxItem item && int.TryParse(item.Content.ToString(), out int limit))
+                    _maxConcurrent = limit;
+            };
 
-        private void ReinitializeOutput()
-        {
-            StopAllPlayback();
-            _outputDevice?.Dispose();
-            _outputDevice = null;
+            // Handle multi-play mode
+            MultiPlayModeCombo.SelectionChanged += (s, e) =>
+            {
+                _layeredMode = MultiPlayModeCombo.SelectedIndex == 1;
+            };
         }
 
         private async void ImportButton_Click(object sender, RoutedEventArgs e)
@@ -83,9 +83,7 @@ namespace GoonPad.Soundboard
                         var pad = new SoundPad
                         {
                             Name = Path.GetFileNameWithoutExtension(file),
-                            FilePath = file,
-                            BassGain = _bassGain,
-                            TrebleGain = _trebleGain
+                            FilePath = file
                         };
                         
                         // Auto-assign keyboard shortcuts F1-F12, then 1-9
@@ -150,6 +148,14 @@ namespace GoonPad.Soundboard
             }
         }
 
+        private void Pad_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is SoundPad pad)
+            {
+                PlaySound(pad);
+            }
+        }
+
         private void PlaySound(SoundPad pad)
         {
             if (!File.Exists(pad.FilePath))
@@ -166,17 +172,13 @@ namespace GoonPad.Soundboard
             {
                 var audioFile = new AudioFileReader(pad.FilePath);
                 
-                // Apply EQ filters
-                var bassFilter = new BiQuadFilter(audioFile.WaveFormat, BiQuadFilterType.LowShelf, 200, _bassGain, 1);
-                var trebleFilter = new BiQuadFilter(audioFile.WaveFormat, BiQuadFilterType.HighShelf, 3000, _trebleGain, 1);
-                
-                var player = new WaveOutEvent();
-                
-                if (OutputDeviceCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is int deviceNum)
+                int deviceNum = 0;
+                if (OutputDeviceCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is int num)
                 {
-                    player.DeviceNumber = deviceNum;
+                    deviceNum = num;
                 }
 
+                var player = new WaveOutEvent(deviceNum);
                 player.Init(audioFile);
                 player.PlaybackStopped += (s, e) =>
                 {
@@ -231,24 +233,6 @@ namespace GoonPad.Soundboard
             ActiveVoicesText.Text = $"{_activePlayers.Count} / {_maxConcurrent}";
         }
 
-        private void BassSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (BassValueText != null)
-            {
-                _bassGain = (float)e.NewValue;
-                BassValueText.Text = $"{_bassGain:F1} dB";
-            }
-        }
-
-        private void TrebleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (TrebleValueText != null)
-            {
-                _trebleGain = (float)e.NewValue;
-                TrebleValueText.Text = $"{_trebleGain:F1} dB";
-            }
-        }
-
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             var keyStr = e.Key.ToString();
@@ -278,16 +262,12 @@ namespace GoonPad.Soundboard
                         {
                             Name = p.Name,
                             FilePath = p.FilePath,
-                            Shortcut = p.Shortcut,
-                            BassGain = p.BassGain,
-                            TrebleGain = p.TrebleGain
+                            Shortcut = p.Shortcut
                         }).ToList(),
                         OutputDeviceIndex = OutputDeviceCombo.SelectedIndex,
                         MicDeviceIndex = MicDeviceCombo.SelectedIndex,
                         MaxConcurrent = _maxConcurrent,
-                        LayeredMode = _layeredMode,
-                        BassGain = _bassGain,
-                        TrebleGain = _trebleGain
+                        LayeredMode = _layeredMode
                     };
 
                     var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
@@ -327,9 +307,7 @@ namespace GoonPad.Soundboard
                             {
                                 Name = savedPad.Name,
                                 FilePath = savedPad.FilePath,
-                                Shortcut = savedPad.Shortcut,
-                                BassGain = savedPad.BassGain,
-                                TrebleGain = savedPad.TrebleGain
+                                Shortcut = savedPad.Shortcut
                             });
                         }
 
@@ -341,11 +319,6 @@ namespace GoonPad.Soundboard
 
                         _maxConcurrent = profile.MaxConcurrent;
                         _layeredMode = profile.LayeredMode;
-                        _bassGain = profile.BassGain;
-                        _trebleGain = profile.TrebleGain;
-
-                        BassSlider.Value = _bassGain;
-                        TrebleSlider.Value = _trebleGain;
 
                         UpdateActiveVoicesDisplay();
                         MessageBox.Show("Profile loaded successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -378,11 +351,6 @@ namespace GoonPad.Soundboard
             set { _shortcut = value; OnPropertyChanged(nameof(Shortcut)); }
         }
 
-        public float BassGain { get; set; }
-        public float TrebleGain { get; set; }
-
-        public ICommand PlayCommand => new RelayCommand(_ => ((MainWindow)Application.Current.MainWindow)?.GetType().GetMethod("PlaySound", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(Application.Current.MainWindow, new object[] { this }));
-
         public event PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
@@ -410,8 +378,6 @@ namespace GoonPad.Soundboard
         public int MicDeviceIndex { get; set; }
         public int MaxConcurrent { get; set; } = 50;
         public bool LayeredMode { get; set; } = true;
-        public float BassGain { get; set; }
-        public float TrebleGain { get; set; }
     }
 
     public class SavedSoundPad
@@ -419,8 +385,6 @@ namespace GoonPad.Soundboard
         public string Name { get; set; } = "";
         public string FilePath { get; set; } = "";
         public string? Shortcut { get; set; }
-        public float BassGain { get; set; }
-        public float TrebleGain { get; set; }
     }
 
     public class RenameDialog : Window
@@ -438,10 +402,10 @@ namespace GoonPad.Soundboard
             Height = 150;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Owner = Application.Current.MainWindow;
-            Background = (Brush)FindResource("PrimaryDarkBrush");
+            Background = Brushes.Transparent;
 
             var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             _textBox = new TextBox
@@ -449,8 +413,8 @@ namespace GoonPad.Soundboard
                 Text = currentName,
                 Margin = new Thickness(10),
                 FontSize = 14,
-                Background = (Brush)FindResource("SecondaryDarkBrush"),
-                Foreground = (Brush)FindResource("TextBrush")
+                Background = Brushes.White,
+                Foreground = Brushes.Black
             };
             Grid.SetRow(_textBox, 0);
 
@@ -465,8 +429,7 @@ namespace GoonPad.Soundboard
             {
                 Content = "OK",
                 Width = 60,
-                Margin = new Thickness(5),
-                Style = (Style)FindResource("ModernButton")
+                Margin = new Thickness(5)
             };
             _okButton.Click += (s, e) => { NewName = _textBox.Text; DialogResult = true; Close(); };
 
@@ -474,8 +437,7 @@ namespace GoonPad.Soundboard
             {
                 Content = "Cancel",
                 Width = 60,
-                Margin = new Thickness(5),
-                Style = (Style)FindResource("ModernButton")
+                Margin = new Thickness(5)
             };
             _cancelButton.Click += (s, e) => DialogResult = false;
 
@@ -502,17 +464,17 @@ namespace GoonPad.Soundboard
             Height = 150;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Owner = Application.Current.MainWindow;
-            Background = (Brush)FindResource("PrimaryDarkBrush");
+            Background = Brushes.Transparent;
 
             var grid = new Grid();
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             _instruction = new TextBlock
             {
                 Text = "Press any key...",
                 FontSize = 18,
-                Foreground = (Brush)FindResource("TextBrush"),
+                Foreground = Brushes.Black,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -523,8 +485,7 @@ namespace GoonPad.Soundboard
                 Content = "Cancel",
                 Width = 80,
                 Margin = new Thickness(10),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Style = (Style)FindResource("ModernButton")
+                HorizontalAlignment = HorizontalAlignment.Center
             };
             cancelButton.Click += (s, e) => DialogResult = false;
             Grid.SetRow(cancelButton, 1);

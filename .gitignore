@@ -6,7 +6,7 @@ obj/
 *.dll
 *.pdb
 *.nupkg
-*.snupkg
+*.userprefs
 
 # Dependencies
 packages/
@@ -21,25 +21,14 @@ node_modules/
 *.suo
 *.userprefs
 
-# Visual Studio files
+# IDE
 .vs/
-*.VC.db
-*.VC.VC.opendb
-
-# Rider
+.vscode/
 .idea/
-
-# Temporary files
-*.tmp
-*.temp
-*.cache
-
-# Environment
-.env
-.env.local
-*.env.*
 
 # OS generated files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Icon?
 ```
