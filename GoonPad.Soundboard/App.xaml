@@ -58,32 +58,37 @@
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Margin" Value="5"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="14"/>
                 <Setter Property="FontWeight" Value="Bold"/>
                 <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="MinHeight" Value="80"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Padding" Value="20,10"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="border"
-                                    Background="{TemplateBinding Background}" 
-                                    CornerRadius="10"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
                                     BorderBrush="{StaticResource AccentBrush}"
-                                    BorderThickness="2">
+                                    BorderThickness="1">
                                 <Grid>
-                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                        <TextBlock Text="{TemplateBinding Content}" 
-                                                   FontWeight="Bold" 
-                                                   FontSize="14"
-                                                   HorizontalAlignment="Center"
-                                                   TextWrapping="Wrap"/>
-                                        <TextBlock x:Name="keyHint" 
-                                                   Text="" 
-                                                   FontSize="10" 
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                   HorizontalAlignment="Center"
-                                                   Margin="0,4,0,0"/>
-                                    </StackPanel>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{TemplateBinding Content}"
+                                               FontWeight="Bold"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1"
+                                               x:Name="keyHint"
+                                               Text=""
+                                               FontSize="11"
+                                               Foreground="{StaticResource HighlightBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="15,0,20,0"/>
                                 </Grid>
                             </Border>
                             <ControlTemplate.Triggers>

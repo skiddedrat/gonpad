@@ -5,13 +5,10 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using Microsoft.Win32;
 using NAudio.Wave;
-using NAudio.Dsp;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json;
 
 namespace GoonPad.Soundboard
@@ -19,18 +16,15 @@ namespace GoonPad.Soundboard
     public partial class MainWindow : Window
     {
         private ObservableCollection<SoundPad> _soundPads = new();
-        private WaveOutEvent? _outputDevice;
-        private List<WaveOutEvent> _activePlayers = new();
+        private List<IWavePlayer> _activePlayers = new();
         private int _maxConcurrent = 50;
         private bool _layeredMode = true;
-        private float _bassGain = 0f;
-        private float _trebleGain = 0f;
 
         public MainWindow()
         {
             InitializeComponent();
             InitializeDevices();
-            PadsGrid.ItemsSource = _soundPads;
+            PadsList.ItemsSource = _soundPads;
             UpdateActiveVoicesDisplay();
             
             // Keyboard shortcut handling
@@ -57,14 +51,18 @@ namespace GoonPad.Soundboard
             if (MicDeviceCombo.Items.Count > 0)
                 MicDeviceCombo.SelectedIndex = 0;
 
-            OutputDeviceCombo.SelectionChanged += (s, e) => ReinitializeOutput();
-        }
+            // Handle concurrent limit combo
+            ConcurrentLimitCombo.SelectionChanged += (s, e) =>
+            {
+                if (ConcurrentLimitCombo.SelectedItem is ComboBoxItem item && int.TryParse(item.Content.ToString(), out int limit))
+                    _maxConcurrent = limit;
+            };
 
-        private void ReinitializeOutput()
-        {
-            StopAllPlayback();
-            _outputDevice?.Dispose();
-            _outputDevice = null;
+            // Handle multi-play mode
+            MultiPlayModeCombo.SelectionChanged += (s, e) =>
+            {
+                _layeredMode = MultiPlayModeCombo.SelectedIndex == 1;
+            };
         }
 
         private async void ImportButton_Click(object sender, RoutedEventArgs e)
@@ -85,9 +83,7 @@ namespace GoonPad.Soundboard
                         var pad = new SoundPad
                         {
                             Name = Path.GetFileNameWithoutExtension(file),
-                            FilePath = file,
-                            BassGain = _bassGain,
-                            TrebleGain = _trebleGain
+                            FilePath = file
                         };
                         
                         // Auto-assign keyboard shortcuts F1-F12, then 1-9
@@ -152,6 +148,14 @@ namespace GoonPad.Soundboard
             }
         }
 
+        private void Pad_Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is SoundPad pad)
+            {
+                PlaySound(pad);
+            }
+        }
+
         private void PlaySound(SoundPad pad)
         {
             if (!File.Exists(pad.FilePath))
@@ -168,21 +172,14 @@ namespace GoonPad.Soundboard
             {
                 var audioFile = new AudioFileReader(pad.FilePath);
                 
-                // Apply EQ filters using ISampleProvider chain
-                var eqProvider = audioFile.ToSampleProvider();
-                if (_bassGain != 0f)
-                    eqProvider = eqProvider.ApplyBassBoost(_bassGain, 200);
-                if (_trebleGain != 0f)
-                    eqProvider = eqProvider.ApplyTrebleBoost(_trebleGain, 3000);
-                
-                var player = new WaveOutEvent();
-                
-                if (OutputDeviceCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is int deviceNum)
+                int deviceNum = 0;
+                if (OutputDeviceCombo.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is int num)
                 {
-                    player.DeviceNumber = deviceNum;
+                    deviceNum = num;
                 }
 
-                player.Init(eqProvider);
+                var player = new WaveOutEvent(deviceNum);
+                player.Init(audioFile);
                 player.PlaybackStopped += (s, e) =>
                 {
                     audioFile.Dispose();
@@ -236,24 +233,6 @@ namespace GoonPad.Soundboard
             ActiveVoicesText.Text = $"{_activePlayers.Count} / {_maxConcurrent}";
         }
 
-        private void BassSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (BassValueText != null)
-            {
-                _bassGain = (float)e.NewValue;
-                BassValueText.Text = $"{_bassGain:F1} dB";
-            }
-        }
-
-        private void TrebleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (TrebleValueText != null)
-            {
-                _trebleGain = (float)e.NewValue;
-                TrebleValueText.Text = $"{_trebleGain:F1} dB";
-            }
-        }
-
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             var keyStr = e.Key.ToString();
@@ -283,16 +262,12 @@ namespace GoonPad.Soundboard
                         {
                             Name = p.Name,
                             FilePath = p.FilePath,
-                            Shortcut = p.Shortcut,
-                            BassGain = p.BassGain,
-                            TrebleGain = p.TrebleGain
+                            Shortcut = p.Shortcut
                         }).ToList(),
                         OutputDeviceIndex = OutputDeviceCombo.SelectedIndex,
                         MicDeviceIndex = MicDeviceCombo.SelectedIndex,
                         MaxConcurrent = _maxConcurrent,
-                        LayeredMode = _layeredMode,
-                        BassGain = _bassGain,
-                        TrebleGain = _trebleGain
+                        LayeredMode = _layeredMode
                     };
 
                     var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
@@ -332,9 +307,7 @@ namespace GoonPad.Soundboard
                             {
                                 Name = savedPad.Name,
                                 FilePath = savedPad.FilePath,
-                                Shortcut = savedPad.Shortcut,
-                                BassGain = savedPad.BassGain,
-                                TrebleGain = savedPad.TrebleGain
+                                Shortcut = savedPad.Shortcut
                             });
                         }
 
@@ -346,11 +319,6 @@ namespace GoonPad.Soundboard
 
                         _maxConcurrent = profile.MaxConcurrent;
                         _layeredMode = profile.LayeredMode;
-                        _bassGain = profile.BassGain;
-                        _trebleGain = profile.TrebleGain;
-
-                        BassSlider.Value = _bassGain;
-                        TrebleSlider.Value = _trebleGain;
 
                         UpdateActiveVoicesDisplay();
                         MessageBox.Show("Profile loaded successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -383,11 +351,6 @@ namespace GoonPad.Soundboard
             set { _shortcut = value; OnPropertyChanged(nameof(Shortcut)); }
         }
 
-        public float BassGain { get; set; }
-        public float TrebleGain { get; set; }
-
-        public ICommand PlayCommand => new RelayCommand(_ => ((MainWindow)Application.Current.MainWindow)?.GetType().GetMethod("PlaySound", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(Application.Current.MainWindow, new object[] { this }));
-
         public event PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
@@ -415,8 +378,6 @@ namespace GoonPad.Soundboard
         public int MicDeviceIndex { get; set; }
         public int MaxConcurrent { get; set; } = 50;
         public bool LayeredMode { get; set; } = true;
-        public float BassGain { get; set; }
-        public float TrebleGain { get; set; }
     }
 
     public class SavedSoundPad
@@ -424,8 +385,6 @@ namespace GoonPad.Soundboard
         public string Name { get; set; } = "";
         public string FilePath { get; set; } = "";
         public string? Shortcut { get; set; }
-        public float BassGain { get; set; }
-        public float TrebleGain { get; set; }
     }
 
     public class RenameDialog : Window
@@ -544,112 +503,6 @@ namespace GoonPad.Soundboard
             _instruction.Text = $"Bound to: {BoundKey}";
             DialogResult = true;
             e.Handled = true;
-        }
-    }
-
-    // Extension methods for EQ
-    public static class AudioExtensions
-    {
-        public static ISampleProvider ApplyBassBoost(this ISampleProvider source, float gainDb, float frequency = 200f)
-        {
-            return new BiQuadFilterSource(source, CreateLowShelfFilter(source.WaveFormat, frequency, gainDb));
-        }
-
-        public static ISampleProvider ApplyTrebleBoost(this ISampleProvider source, float gainDb, float frequency = 3000f)
-        {
-            return new BiQuadFilterSource(source, CreateHighShelfFilter(source.WaveFormat, frequency, gainDb));
-        }
-
-        private static BiQuadFilter CreateLowShelfFilter(WaveFormat format, float frequency, float gainDb)
-        {
-            var sampleRate = format.SampleRate;
-            var Q = 0.707f;
-            var A = (float)Math.Pow(10, gainDb / 40);
-            var w0 = 2 * Math.PI * frequency / sampleRate;
-            var cosw0 = Math.Cos(w0);
-            var sinw0 = Math.Sin(w0);
-            var alpha = sinw0 / (2 * Q);
-
-            var a0 = (A + 1) - (A - 1) * cosw0 + 2 * alpha * A;
-            var a1 = 2 * ((A - 1) - (A + 1) * cosw0);
-            var a2 = (A + 1) - (A - 1) * cosw0 - 2 * alpha * A;
-            var b1 = -2 * ((A + 1) + (A - 1) * cosw0);
-            var b2 = (A + 1) + (A - 1) * cosw0 - 2 * alpha * A;
-
-            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1f);
-        }
-
-        private static BiQuadFilter CreateHighShelfFilter(WaveFormat format, float frequency, float gainDb)
-        {
-            var sampleRate = format.SampleRate;
-            var Q = 0.707f;
-            var A = (float)Math.Pow(10, gainDb / 40);
-            var w0 = 2 * Math.PI * frequency / sampleRate;
-            var cosw0 = Math.Cos(w0);
-            var sinw0 = Math.Sin(w0);
-            var alpha = sinw0 / (2 * Q);
-
-            var a0 = (A + 1) + (A - 1) * cosw0 + 2 * alpha * A;
-            var a1 = -2 * ((A - 1) + (A + 1) * cosw0);
-            var a2 = (A + 1) + (A - 1) * cosw0 - 2 * alpha * A;
-            var b1 = 2 * ((A + 1) - (A - 1) * cosw0);
-            var b2 = (A + 1) - (A - 1) * cosw0 - 2 * alpha * A;
-
-            return new BiQuadFilter((float)(a1 / a0), (float)(a2 / a0), (float)(b1 / a0), (float)(b2 / a0), 1f);
-        }
-    }
-
-    public class BiQuadFilter
-    {
-        private float a1, a2, b0, b1, b2;
-        private float z1, z2;
-
-        public BiQuadFilter(float a1, float a2, float b1, float b2, float b0)
-        {
-            this.a1 = a1;
-            this.a2 = a2;
-            this.b0 = b0;
-            this.b1 = b1;
-            this.b2 = b2;
-            z1 = 0;
-            z2 = 0;
-        }
-
-        public float Transform(float input)
-        {
-            float output = b0 * input + z1;
-            z1 = b1 * input - a1 * output + z2;
-            z2 = b2 * input - a2 * output;
-            return output;
-        }
-    }
-
-    public class BiQuadFilterSource : ISampleProvider
-    {
-        private readonly ISampleProvider _source;
-        private readonly BiQuadFilter _filter;
-        private readonly float[] _workBuffer;
-
-        public BiQuadFilterSource(ISampleProvider source, BiQuadFilter filter)
-        {
-            _source = source;
-            _filter = filter;
-            _workBuffer = new float[source.WaveFormat.Channels];
-        }
-
-        public WaveFormat WaveFormat => _source.WaveFormat;
-
-        public int Read(float[] buffer, int offset, int count)
-        {
-            int samplesRead = _source.Read(buffer, offset, count);
-            for (int i = 0; i < samplesRead; i += WaveFormat.Channels)
-            {
-                for (int ch = 0; ch < WaveFormat.Channels; ch++)
-                {
-                    buffer[offset + i + ch] = _filter.Transform(buffer[offset + i + ch]);
-                }
-            }
-            return samplesRead;
         }
     }
 }

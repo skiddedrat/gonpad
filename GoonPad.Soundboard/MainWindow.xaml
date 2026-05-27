@@ -76,77 +76,30 @@
             </Grid>
         </Border>
 
-        <!-- Sound Pads Grid -->
+        <!-- Sound Pads List -->
         <Border Grid.Row="1" Padding="15">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="PadsGrid" Background="Transparent">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ListBox x:Name="PadsList" Background="Transparent" BorderThickness="0"
+                         ItemsSource="{Binding}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Button Style="{StaticResource SoundPadButton}" 
-                                    Command="{Binding PlayCommand}"
                                     Content="{Binding Name}"
                                     Tag="{Binding}"
-                                    Width="140"
-                                    Height="100"
-                                    MouseRightButtonDown="Pad_RightClick"/>
+                                    Height="60"
+                                    Click="Pad_Button_Click"/>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </ScrollViewer>
         </Border>
 
-        <!-- Bottom EQ Controls -->
+        <!-- Bottom Status Bar -->
         <Border Grid.Row="2" Background="{StaticResource SecondaryDarkBrush}" Padding="15">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Bass Control -->
-                <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                    <TextBlock Text="Bass" Foreground="{StaticResource TextBrush}" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="-12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
-                        <Slider x:Name="BassSlider" Grid.Column="1" Style="{StaticResource ModernSlider}" ValueChanged="BassSlider_ValueChanged" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" Text="+12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
-                    </Grid>
-                    <TextBlock x:Name="BassValueText" Text="0.0 dB" Foreground="{StaticResource HighlightBrush}" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                </StackPanel>
-
-                <!-- Volume Display -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0">
-                    <TextBlock Text="Active Voices" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" HorizontalAlignment="Center"/>
-                    <TextBlock x:Name="ActiveVoicesText" Text="0 / 50" Foreground="{StaticResource TextBrush}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
-                </StackPanel>
-
-                <!-- Treble Control -->
-                <StackPanel Grid.Column="2" Margin="15,0,0,0">
-                    <TextBlock Text="Treble" Foreground="{StaticResource TextBrush}" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="-12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
-                        <Slider x:Name="TrebleSlider" Grid.Column="1" Style="{StaticResource ModernSlider}" ValueChanged="TrebleSlider_ValueChanged" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" Text="+12 dB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
-                    </Grid>
-                    <TextBlock x:Name="TrebleValueText" Text="0.0 dB" Foreground="{StaticResource HighlightBrush}" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                </StackPanel>
-            </Grid>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="Active Voices: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="14"/>
+                <TextBlock x:Name="ActiveVoicesText" Text="0 / 50" Foreground="{StaticResource HighlightBrush}" FontSize="18" FontWeight="Bold"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>
